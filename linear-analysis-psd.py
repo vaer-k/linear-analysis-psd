@@ -1,11 +1,11 @@
 #! /usr/bin/python
 
 """
-==================
-   compute_psd
-==================
+==========================
+   linear-analysis-psd
+==========================
 
-Epochs resting MEG data into 4 second intervals, removes EOG artifacts, computes noise covariance, inverse operator and PSD.
+This program will compute PSD, then perform linear regression analysis on user specified frequency range.
 
 """
 # Authors: Vincent Rupp Jr. <<ruppjr@hawaii.edu>>; Morgan Hough <<morgan@gazzaleylab.ucsf.edu>>
@@ -146,30 +146,9 @@ elif hemi == 'right':
                 src = f
                 os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/psd/' + src)
 
-# compute average PSD over every epoch (this is the original plot routine)
-#n_epochs = len(epc_array)
-#for i, stc in enumerate(psd):
-#    if i >= n_epochs:
-#        break
-#
-#    if i == 0:
-#        psd_avg = np.mean(stc.data, axis=0)
-#    else:
-#        psd_avg += np.mean(stc.data, axis=0)
-#
-#psd_avg /= n_epochs
-#freqs = stc.times  # the frequencies are stored here
-#
-#pl.figure()
-#pl.plot(freqs, psd_avg)
-#pl.xlabel('Freq (Hz)')
-#pl.ylabel('Power Spectral Density')
-#pl.show()
+# This code computes the average PSDs of each epoch. Each PSD file is an array of shape N_verticesXN_frequencies. This code averages the PSD value of each vertex together and outputs the average PSD value of each frequency. Then, it averages the PSD values of each epoch, outputting one average PSD value per frequency value
 
-# Compute and plot regression of high gamma
-#n_epochs = len(epc_array)
-
-n_epochs = len(epc_array) 
+n_epochs = len(epc_array)
 for i, stc in enumerate(psd):
     if i >= n_epochs:
         break
@@ -180,11 +159,34 @@ for i, stc in enumerate(psd):
         psd_avg += np.mean(stc.data, axis=0)
 
 psd_avg /= n_epochs
-freqs = stc.times
-line = scipy.stats.linregress(freqs, psd_avg)
 
-pl.figure()
-pl.plot(line)
-pl.xlabel('Freq (Hz)')
-pl.ylabel('Power Spectral Density')
-pl.show()
+#freqs = stc.times  # the frequencies are stored here
+#
+#pl.figure()
+#pl.plot(freqs, psd_avg)
+#pl.xlabel('Freq (Hz)')
+#pl.ylabel('Power Spectral Density')
+#pl.show()
+
+# Compute and plot regression of high gamma
+#n_epochs = len(epc_array)
+#
+#n_epochs = len(epc_array) 
+#for i, stc in enumerate(psd):
+#    if i >= n_epochs:
+#        break
+#
+#    if i == 0:
+#        psd_avg = np.mean(stc.data, axis=0)
+#    else:
+#        psd_avg += np.mean(stc.data, axis=0)
+#
+#psd_avg /= n_epochs
+#freqs = stc.times
+#line = scipy.stats.linregress(freqs, psd_avg)
+#
+#pl.figure()
+#pl.plot(line)
+#pl.xlabel('Freq (Hz)')
+#pl.ylabel('Power Spectral Density')
+#pl.show()
