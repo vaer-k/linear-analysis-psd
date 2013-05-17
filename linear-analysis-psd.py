@@ -160,6 +160,20 @@ for i, stc in enumerate(psd):
 
 psd_avg /= n_epochs
 
+# Compute variance for each epoch and then variance of those results
+
+n_epochs = len(epc_array)
+for i, stc in enumerate(psd):
+    if i >= n_epochs:
+        break
+    
+    if i == 0:
+        psd_var = np.var(stc.data, axis=0)
+    else:
+        psd_var = np.vstack((psd_var,np.var(stc.data, axis=0)))
+
+tot_var = np.var(psd_var, axis=0)
+
 #freqs = stc.times  # the frequencies are stored here
 #
 #pl.figure()
