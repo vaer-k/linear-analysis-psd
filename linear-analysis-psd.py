@@ -76,38 +76,6 @@ epc_array = epochs.get_data()
 # Compute the inverse solution
 inv = apply_inverse_epochs(epochs, inverse_operator, lambda2, method, label=label)
 
-#Need to add a line here to automatically create stc directory within subj
-#
-
-epoch_num = 1
-epoch_num_str = str(epoch_num)
-for i in inv:
-	i.save(data_path + subj + '/tmp/' + label_name[3:] + '_rest_raw_sss-oct-6-inv' + epoch_num_str)
-	epoch_num = epoch_num + 1
-	epoch_num_str = str(epoch_num)
-
-# The following is used to remove the empty opposing hemisphere files
-# and then move the files to save into the appropriate directory
-
-if hemi == 'left':
-	filelist = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-rh.stc") ]	
-	for f in filelist:
-		os.remove("/data/restMEG/" + subj + '/tmp/' + f)
-	keepers = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-lh.stc") ]
-	for f in keepers:
-	        src = f 
-		os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/inv/' + src)
-
-elif hemi == 'right':
-	filelist = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-lh.stc") ]
-        for f in filelist:
-                os.remove("/data/restMEG/" + subj + '/tmp/' + f)
-	keepers = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-rh.stc") ]
-        for f in keepers:
-                src = f 
-		os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/inv/' + src)
-
-
 # define frequencies of interest
 bandwidth = 4.  # bandwidth of the windows in Hz
 
@@ -120,31 +88,6 @@ bandwidth = 4.  # bandwidth of the windows in Hz
 psd = compute_source_psd_epochs(epochs, inverse_operator, lambda2=lambda2,
                                  method=method, fmin=fmin, fmax=fmax,
                                  bandwidth=bandwidth, label=label, return_generator=False)
-
-epoch_num = 1
-epoch_num_str = str(epoch_num)
-for i in psd:
-	i.save('/data/restMEG/' + subj + '/' + 'tmp' + '/' + label_name[3:] + '_dspm_snr-1_PSD'+ epoch_num_str)
-	epoch_num = epoch_num + 1
-        epoch_num_str = str(epoch_num)
-
-if hemi == 'left':
-        filelist = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-rh.stc") ]
-        for f in filelist:
-                os.remove("/data/restMEG/" + subj + '/tmp/' + f)
-	keepers = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-lh.stc") ]
-        for f in keepers:
-                src = f
-                os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/psd/' + src)
-
-elif hemi == 'right':
-        filelist = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-lh.stc") ]
-        for f in filelist:
-                os.remove("/data/restMEG/" + subj + '/tmp/' + f)
-	keepers = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-rh.stc") ]
-        for f in keepers:
-                src = f
-                os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/psd/' + src)
 
 # This code computes the average PSDs of each epoch. Each PSD file is an array of shape N_verticesXN_frequencies. This code averages the PSD value of each vertex together and outputs the average PSD value of each frequency. Then, it averages the PSD values of each epoch, outputting one average PSD value per frequency value
 
@@ -173,34 +116,3 @@ for i, stc in enumerate(psd):
         psd_var = np.vstack((psd_var,np.var(stc.data, axis=0)))
 
 tot_var = np.var(psd_var, axis=0)
-
-#freqs = stc.times  # the frequencies are stored here
-#
-#pl.figure()
-#pl.plot(freqs, psd_avg)
-#pl.xlabel('Freq (Hz)')
-#pl.ylabel('Power Spectral Density')
-#pl.show()
-
-# Compute and plot regression of high gamma
-#n_epochs = len(epc_array)
-#
-#n_epochs = len(epc_array) 
-#for i, stc in enumerate(psd):
-#    if i >= n_epochs:
-#        break
-#
-#    if i == 0:
-#        psd_avg = np.mean(stc.data, axis=0)
-#    else:
-#        psd_avg += np.mean(stc.data, axis=0)
-#
-#psd_avg /= n_epochs
-#freqs = stc.times
-#line = scipy.stats.linregress(freqs, psd_avg)
-#
-#pl.figure()
-#pl.plot(line)
-#pl.xlabel('Freq (Hz)')
-#pl.ylabel('Power Spectral Density')
-#pl.show()
