@@ -42,9 +42,11 @@ def intra(subject_name):
 
     # Set function parameters
     subj = subject_name 
-    fname_label = '/data/freesurfer_recons/MITRSMEG/' + subj + '/' + 'label/%s.label' % label_name
+#    fname_label = '/data/freesurfer_recons/MITRSMEG/' + subj + '/' + 'label/%s.label' % label_name
+    fname_label = '/home/vrupp/data/search_fMRI/' + subj + '/' + 'label/%s.label' % label_name
     fname_raw = data_path + subj + '/' + subj + '_rest_raw_sss.fif'
-    fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-oct-6-fwd.fif'
+    fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'
+#    fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-oct-6-fwd.fif'
 
     if label_name.startswith('lh.'):
     	hemi = 'left'
@@ -91,7 +93,8 @@ def intra(subject_name):
     epoch_num = 1
     epoch_num_str = str(epoch_num)
     for i in inv:
-    	i.save(data_path + subj + '/tmp/' + label_name[3:] + '_rest_raw_sss-oct-6-inv' + epoch_num_str)
+#    	i.save(data_path + subj + '/tmp/' + label_name[3:] + '_rest_raw_sss-oct-6-inv' + epoch_num_str)
+	i.save(data_path + subj + '/tmp/' + label_name[3:] + '_rest_raw_sss-ico-4-inv' + epoch_num_str)
     	epoch_num = epoch_num + 1
     	epoch_num_str = str(epoch_num)
     
@@ -189,5 +192,5 @@ def intra(subject_name):
 out_data = {}
 for subj in os.listdir("/data/restMEG/"):
         if subj.startswith(age):
-	    psd, var = intra(subj)
-	    out_data[subj] = (psd, var)
+	    avg_psd, var_var = intra(subj)
+	    out_data[subj] = (avg_psd, var_var)
