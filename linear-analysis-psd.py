@@ -5,7 +5,7 @@
    linear-analysis-psd
 ==========================
 
-This program will compute average PSD and variance of across subjects in specified frequency range, the perform analysis using Welche's t-test.
+This program will compute average PSD and variance of across subjects in specified frequency range, the perform analysis using Welche's t-test. Run this from the directory of your MEG subjects.
 
 """
 # Authors: Vincent Rupp Jr. <<ruppjr@hawaii.edu>>; Morgan Hough <<morgan@gazzaleylab.ucsf.edu>>
@@ -17,17 +17,23 @@ import pylab as pl
 import scipy
 import mne
 import os
+import time
+import csv
 from mne import fiff, write_cov
 from mne.fiff import Raw, pick_types
 from mne.minimum_norm import read_inverse_operator, compute_source_psd_epochs, apply_inverse_epochs, write_inverse_operator, make_inverse_operator
 
 ###############################################################################
 # Set global parameters
-data_path = '/data/restMEG/'
-age = raw_input('YA or OA?\n')
-label_name = raw_input('Which region label would you like to compute PSD for?\n')
-fmin = float(raw_input('fmin:'))
-fmax = float(raw_input('fmax:')) 
+data_path = os.getcwd() + '/' 
+age = 'YA'
+#age = raw_input('YA or OA?\n')
+label_name = 'lh.BA45'
+#label_name = raw_input('Which region label would you like to compute PSD for?\n')
+fmin = 80.0
+fmax = 100.0
+#fmin = float(raw_input('fmin:'))
+#fmax = float(raw_input('fmax:')) 
 
 event_id, tmin, tmax = 1, 0.0, 4.0
 snr = 1.0 
@@ -35,18 +41,16 @@ lambda2 = 1.0 / snr ** 2
 method = "dSPM" 
 
 	
-def intra(subject_name):
+def intra(subj):
     '''
     Performs initial computations within subject and returns average PSD and variance of all epochs.
     '''
+    print('Now beginning intra processing on ' + subj + '...\n') * 5
 
     # Set function parameters
-    subj = subject_name 
-#    fname_label = '/data/freesurfer_recons/MITRSMEG/' + subj + '/' + 'label/%s.label' % label_name
     fname_label = '/home/vrupp/data/search_fMRI/' + subj + '/' + 'label/%s.label' % label_name
     fname_raw = data_path + subj + '/' + subj + '_rest_raw_sss.fif'
     fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'
-#    fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-oct-6-fwd.fif'
 
     if label_name.startswith('lh.'):
     	hemi = 'left'
@@ -159,7 +163,7 @@ def intra(subject_name):
             os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/psd/' + src)
    
  
-    # This code computes the average PSDs of each epoch. Each PSD file is an array of shape N_verticesXN_frequencies. This code averages the PSD value of each vertex together and outputs the average PSD value of each frequency. Then, it averages the PSD values of each epoch, outputting one average PSD value per frequency value
+    # This code computes the average PSDs of each epoch. Each PSD file is an array of shape N_vertices*N_frequencies. This code averages the PSD value of each vertex together and outputs the average PSD value of each frequency. Then, it averages the PSD values of each epoch, outputting one average PSD value per frequency value, i.e., this is the average across epochs.
     
     n_epochs = len(epc_array)
     for i, stc in enumerate(psd):
@@ -171,6 +175,10 @@ def intra(subject_name):
         else:
             psd_avg += np.mean(stc.data, axis=0)
     
+    print('Length of psd for subject ' + subj + ' is ' + str(len(psd)) + '.')
+    print('Number of epochs for subject ' + subj + ' is ' + str(n_epochs) + '.')
+    time.sleep(3)
+   
     psd_avg /= n_epochs
     
     # Compute variance for each epoch and then variance of those results
@@ -190,7 +198,10 @@ def intra(subject_name):
     return (psd_avg, tot_var)
 
 out_data = {}
-for subj in os.listdir("/data/restMEG/"):
-        if subj.startswith(age):
-	    avg_psd, var_var = intra(subj)
-	    out_data[subj] = (avg_psd, var_var)
+for subject in os.listdir(os.getcwd()):
+        if subject.startswith(age):
+	    avg_psd, var_var = intra(subject)
+	    out_data[subject] = (avg_psd, var_var)
+            w = csv.writer(open(str(os.getcwd()) + '/' + subject + '/' + subject + '_psd_avg_and_var.csv', 'w'))
+	    for key, val in out_data.items():
+        	w.writerow([key, val])
