@@ -203,37 +203,40 @@ def intra(subj):
 	return failed_subj, failed_subj, failed_subj
 
     if len(psd) != 0:
-        return (psd_avg, tot_var, len(psd))
+        return (psd_avg, tot_var, len(psd_avg))
 
 
-out_data = {}
 failed_list = []
 # List subjects in cwd
 for subject in os.listdir(os.getcwd()):
 # Operate only on specified age group
         if subject.startswith(age):
-	    print(subject)
+	    print(subject) * 5
 # Check if preprocessing has been done (fwd solutions are last step of preprocessing) and process subjects with intra()
             if os.path.isfile(str(os.getcwd()) + '/' + subject + '/' + subject + '_rest_raw_sss-ico-4-fwd.fif'):
 		individual_avg_psd, individual_var_var, n_freqs = intra(subject)
 # Verify subject did not fail PSD calculations and calculate combined PSD averages and variances. Set up empty array for combined_avg_psd and stack combined_var_var into one vertical array
-		if type(individual_avg_psd) == 'numpy.ndarray': 
-		    if not combined_avg_psd in locals():
+		print(type(individual_avg_psd))
+		if type(individual_avg_psd) == np.ndarray: 
+		    if not 'combined_avg_psd' in locals():
 			combined_avg_psd = np.zeros(n_freqs)
 		    else:
     		        combined_avg_psd = individual_avg_psd + combined_avg_psd
-		    if not combined_var_var in locals():
+		    if not 'combined_var_var' in locals():
 			combined_var_var = individual_var_var
 		    else:
-		        combined_var_var = np.vstack(combined_var_var, individual_var_var)		
+		        combined_var_var = np.vstack((combined_var_var, individual_var_var))		
 		else:
 		    failed_list.append(subject)
 	    else:
 		failed_list.append(subject)
                 print('Subject ' + subject + ' has not yet been preprocessed.')
 
+print('The following subjects failed PSD calculations:')
+print(failed_list)
+
 n_subj = len(os.listdir(os.getcwd())) - len(failed_list)
-avg_psd = combined_avg_psd/n_subj
+avg_psd = combined_avg_psd / n_subj
 var_var = np.var(combined_var_var, axis=0)
 print('avg_psd follows:')
 print(avg_psd)
@@ -241,11 +244,3 @@ print('var_var follows:')
 print(var_var)
 np.savetxt('psd_avg.csv', avg_psd, delimiter=',')
 np.savetxt('var_var.csv', var_var, delimiter=',')
-
-#                out_data = (avg_psd, var_var)
-#                w = csv.writer(open(str(os.getcwd()) + 'psd_avg_and_var.csv', 'w'))
-#                for key, val in out_data.items():
-#                    w.writerow([key, val])
-
-print('The following subjects failed PSD calculations:')
-print(failed_list)
