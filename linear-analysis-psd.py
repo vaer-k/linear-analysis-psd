@@ -50,7 +50,10 @@ def intra(subj):
     # Set function parameters
     fname_label = '/home/vrupp/data/search_fMRI/' + subj + '/' + 'label/%s.label' % label_name
     fname_raw = data_path + subj + '/' + subj + '_rest_raw_sss.fif'
-    fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'
+    if os.path.isfile(data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'): 
+	fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'
+    else: 
+        print('Subject ' + subj + ' does not have a ico-4-fwd.fif on file.')	
 
     if label_name.startswith('lh.'):
     	hemi = 'left'
@@ -77,13 +80,10 @@ def intra(subj):
     # Set up pick list: (MEG minus bad channels)
     include = []
     exclude = raw.info['bads']
-    picks = fiff.pick_types(raw.info, meg=True, eeg=False, stim=False, eog=True, 
-    		include=include, exclude=exclude)
+    picks = fiff.pick_types(raw.info, meg=True, eeg=False, stim=False, eog=True, include=include, exclude=exclude)
     
     # Read epochs and remove bad epochs
-    epochs = mne.Epochs(raw, events, event_id, tmin, tmax, proj=True, 
-    		picks=picks, baseline=(None, 0), preload=True, 
-    		reject=dict(grad=4000e-13, mag=4e-12, eog=150e-6))
+    epochs = mne.Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks, baseline=(None, 0), preload=True, reject=dict(grad=4000e-13, mag=4e-12, eog=150e-6))
     
     # Pull data for averaging later
     epc_array = epochs.get_data()
@@ -92,7 +92,6 @@ def intra(subj):
     inv = apply_inverse_epochs(epochs, inverse_operator, lambda2, method, label=label)
     
     #Need to add a line here to automatically create stc directory within subj
-    #
     
     epoch_num = 1
     epoch_num_str = str(epoch_num)
@@ -177,31 +176,76 @@ def intra(subj):
     
     print('Length of psd for subject ' + subj + ' is ' + str(len(psd)) + '.')
     print('Number of epochs for subject ' + subj + ' is ' + str(n_epochs) + '.')
-    time.sleep(3)
    
-    psd_avg /= n_epochs
+    if len(psd) != 0:
+        psd_avg /= n_epochs
     
     # Compute variance for each epoch and then variance of those results
     
     n_epochs = len(epc_array)
     for i, stc in enumerate(psd):
         if i >= n_epochs:
-            break
+            psd_var = np.array()
+	    break
         
         if i == 0:
             psd_var = np.var(stc.data, axis=0)
         else:
             psd_var = np.vstack((psd_var,np.var(stc.data, axis=0)))
     
-    tot_var = np.var(psd_var, axis=0)
+    if len(psd) != 0:
+        tot_var = np.var(psd_var, axis=0)
 
-    return (psd_avg, tot_var)
+    if len(psd) == 0:
+	failed_subj = subj
+	print(failed_subj + ' is a no go. No PSD values calculated, likely because all epochs were rejected.')
+	time.sleep(30)
+	return failed_subj, failed_subj, failed_subj
+
+    if len(psd) != 0:
+        return (psd_avg, tot_var, len(psd))
+
 
 out_data = {}
+failed_list = []
+# List subjects in cwd
 for subject in os.listdir(os.getcwd()):
+# Operate only on specified age group
         if subject.startswith(age):
-	    avg_psd, var_var = intra(subject)
-	    out_data[subject] = (avg_psd, var_var)
-            w = csv.writer(open(str(os.getcwd()) + '/' + subject + '/' + subject + '_psd_avg_and_var.csv', 'w'))
-	    for key, val in out_data.items():
-        	w.writerow([key, val])
+	    print(subject)
+# Check if preprocessing has been done (fwd solutions are last step of preprocessing) and process subjects with intra()
+            if os.path.isfile(str(os.getcwd()) + '/' + subject + '/' + subject + '_rest_raw_sss-ico-4-fwd.fif'):
+		individual_avg_psd, individual_var_var, n_freqs = intra(subject)
+# Verify subject did not fail PSD calculations and calculate combined PSD averages and variances. Set up empty array for combined_avg_psd and stack combined_var_var into one vertical array
+		if type(individual_avg_psd) == 'numpy.ndarray': 
+		    if not combined_avg_psd in locals():
+			combined_avg_psd = np.zeros(n_freqs)
+		    else:
+    		        combined_avg_psd = individual_avg_psd + combined_avg_psd
+		    if not combined_var_var in locals():
+			combined_var_var = individual_var_var
+		    else:
+		        combined_var_var = np.vstack(combined_var_var, individual_var_var)		
+		else:
+		    failed_list.append(subject)
+	    else:
+		failed_list.append(subject)
+                print('Subject ' + subject + ' has not yet been preprocessed.')
+
+n_subj = len(os.listdir(os.getcwd())) - len(failed_list)
+avg_psd = combined_avg_psd/n_subj
+var_var = np.var(combined_var_var, axis=0)
+print('avg_psd follows:')
+print(avg_psd)
+print('var_var follows:')
+print(var_var)
+np.savetxt('psd_avg.csv', avg_psd, delimiter=',')
+np.savetxt('var_var.csv', var_var, delimiter=',')
+
+#                out_data = (avg_psd, var_var)
+#                w = csv.writer(open(str(os.getcwd()) + 'psd_avg_and_var.csv', 'w'))
+#                for key, val in out_data.items():
+#                    w.writerow([key, val])
+
+print('The following subjects failed PSD calculations:')
+print(failed_list)
