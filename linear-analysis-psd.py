@@ -236,7 +236,7 @@ n_subj = len(os.listdir(os.getcwd())) - len(failed_list)
 avg_psd = combined_avg_psd / n_subj
 
 # Average across frequencies
-final_avg_psd = avg_psd / n_freqs
+final_avg_psd = np.mean(avg_psd) 
 
 # Compute variance across subjects
 var_var = np.var(combined_var_var, axis=0)
@@ -255,4 +255,4 @@ if age == 'YA':
     np.savetxt('var_var_YA.csv', var_var, delimiter=',')
 if age == 'OA':
     np.savetxt('psd_avg_OA.csv', avg_psd, delimiter=',')
-    np.savetxt('var_var_YA.csv', var_var, delimiter=',')
+    np.savetxt('var_var_OA.csv', var_var, delimiter=',')
