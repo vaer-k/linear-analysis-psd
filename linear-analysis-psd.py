@@ -176,7 +176,7 @@ def intra(subj):
     if len(psd) != 0:
         psd_avg /= n_epochs
     
-    # Compute variance for each epoch and then variance of those results
+    # Compute variance for each epoch and then variance across epochs 
     
     n_epochs = len(epc_array)
     for i, stc in enumerate(psd):
@@ -194,7 +194,7 @@ def intra(subj):
 
     if len(psd) == 0:
 	failed_subj = subj
-	print(failed_subj + ' is a no go. No PSD values calculated, likely because all epochs were rejected.')
+	print(failed_subj + ' failed. No PSD values calculated, likely because all epochs were rejected.')
 	time.sleep(30)
 	return failed_subj, failed_subj, failed_subj
 
@@ -231,12 +231,28 @@ for subject in os.listdir(os.getcwd()):
 print('The following subjects failed PSD calculations:')
 print(failed_list)
 
+# Average across subjects
 n_subj = len(os.listdir(os.getcwd())) - len(failed_list)
 avg_psd = combined_avg_psd / n_subj
+
+# Average across frequencies
+final_avg_psd = avg_psd / n_freqs
+
+# Compute variance across subjects
 var_var = np.var(combined_var_var, axis=0)
-print('avg_psd follows:')
-print(avg_psd)
-print('var_var follows:')
-print(var_var)
-np.savetxt('psd_avg.csv', avg_psd, delimiter=',')
-np.savetxt('var_var.csv', var_var, delimiter=',')
+
+# Compute variance across frequencies
+final_var = np.var(var_var)
+
+print('final_avg_psd follows:')
+print(final_avg_psd)
+print('final_var follows:')
+print(final_var)
+
+# Save averages and variances across subjects in csv document
+if age == 'YA':
+    np.savetxt('psd_avg_YA.csv', avg_psd, delimiter=',')
+    np.savetxt('var_var_YA.csv', var_var, delimiter=',')
+if age == 'OA':
+    np.savetxt('psd_avg_OA.csv', avg_psd, delimiter=',')
+    np.savetxt('var_var_YA.csv', var_var, delimiter=',')
