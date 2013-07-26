@@ -26,14 +26,10 @@ from mne.minimum_norm import read_inverse_operator, compute_source_psd_epochs, a
 ###############################################################################
 # Set global parameters
 data_path = os.getcwd() + '/' 
-age = 'YA'
-#age = raw_input('YA or OA?\n')
-label_name = 'lh.BA45'
-#label_name = raw_input('Which region label would you like to compute PSD for?\n')
-fmin = 80.0
-fmax = 100.0
-#fmin = float(raw_input('fmin:'))
-#fmax = float(raw_input('fmax:')) 
+age = raw_input('YA or OA?\n')
+label_name = raw_input('Which region label would you like to compute PSD for?\n')
+fmin = float(raw_input('fmin:'))
+fmax = float(raw_input('fmax:')) 
 
 event_id, tmin, tmax = 1, 0.0, 4.0
 snr = 1.0 
