@@ -195,7 +195,6 @@ def intra(subj):
     if len(psd) == 0:
 	failed_subj = subj
 	print(failed_subj + ' failed. No PSD values calculated, likely because all epochs were rejected.')
-	time.sleep(30)
 	return failed_subj, failed_subj, failed_subj
 
     if len(psd) != 0:
@@ -212,7 +211,6 @@ for subject in os.listdir(os.getcwd()):
             if os.path.isfile(str(os.getcwd()) + '/' + subject + '/' + subject + '_rest_raw_sss-ico-4-fwd.fif'):
 		individual_avg_psd, individual_var_var, n_freqs = intra(subject)
 # Verify subject did not fail PSD calculations and calculate combined PSD averages and variances. Set up empty array for combined_avg_psd and stack combined_var_var into one vertical array
-		print(type(individual_avg_psd))
 		if type(individual_avg_psd) == np.ndarray: 
 		    if not 'combined_avg_psd' in locals():
 			combined_avg_psd = np.zeros(n_freqs)
@@ -244,9 +242,25 @@ var_var = np.var(combined_var_var, axis=0)
 # Compute variance across frequencies
 final_var = np.var(var_var)
 
-print('final_avg_psd follows:')
+# Compute linear regression
+step = (fmax - fmin) / (bandwidth * 10)
+xi = np.arange(fmin, fmax, step)   
+A = np.array([ xi, ones(len(xi))]) 
+y = avg_psd
+w = np.linalg.lstsq(A.T, y)[0] #obtaining the parameters
+
+# plotting the line
+line = w[0]*xi+w[1] #regression line
+pl.plot(xi,line,'r-',xi,y,'o')
+pl.show()
+
+print('avg_psd (across subjects) follows:')
+print(avg_psd)
+print('var_var (across subjects) follows:')
+print(var_var)
+print('final_avg_psd (across freqs) follows:')
 print(final_avg_psd)
-print('final_var follows:')
+print('final_var (across freqs) follows:')
 print(final_var)
 
 # Save averages and variances across subjects in csv document
