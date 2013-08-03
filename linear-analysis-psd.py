@@ -31,7 +31,6 @@ age = raw_input('YA or OA?\n')
 label_name = raw_input('Which region label would you like to compute PSD for?\n')
 fmin = float(raw_input('fmin:'))
 fmax = float(raw_input('fmax:')) 
-bandwidth = 4.  # bandwidth of the windows in Hz
 
 event_id, tmin, tmax = 1, 0.0, 4.0
 snr = 1.0 
@@ -49,7 +48,7 @@ def intra(subj):
     fname_label = subjects_dir + '/' + subj + '/' + 'label/%s.label' % label_name
     fname_raw = data_path + subj + '/' + subj + '_rest_raw_sss.fif'
     if os.path.isfile(data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'): 
-	fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'
+        fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'
     else: 
         print('Subject ' + subj + ' does not have a ico-4-fwd.fif on file.')	
 
@@ -122,7 +121,7 @@ def intra(subj):
     
     
     # define frequencies of interest
-#    bandwidth = 4.  # bandwidth of the windows in Hz
+    bandwidth = 4.  # bandwidth of the windows in Hz
     
     # compute source space psd in label
     
@@ -191,15 +190,15 @@ def intra(subj):
         else:
             psd_var = np.vstack((psd_var,np.var(stc.data, axis=0)))
     
-    if len(psd) != 0:
+    if len(psd) >= 2:
         tot_var = np.var(psd_var, axis=0)
 
-    if len(psd) == 0:
+    if len(psd) <= 1:
 	failed_subj = subj
 	print(failed_subj + ' failed. No PSD values calculated, likely because all epochs were rejected.')
 	return failed_subj, failed_subj, failed_subj
 
-    if len(psd) != 0:
+    if len(psd) >= 2:
         return (psd_avg, tot_var, len(psd_avg))
 
 
