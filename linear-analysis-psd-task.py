@@ -47,10 +47,10 @@ def intra(subj):
 
     # Set function parameters
     fname_label = subjects_dir + '/' + subj + '/' + 'label/%s.label' % label_name
-    fname_raw = data_path + subj + '/' + subj + '_' + list_num + '_raw_sss-ico-4-fwd.fif' 
+    fname_raw = data_path + subj + '/' + subj + '_list' + list_num + '_raw_sss-ico-4-fwd.fif' 
 
-    if os.path.isfile(data_path + subj + '/' + subj + '_' + list_num + '_raw_sss-ico-4-fwd.fif'): 
-        fname_fwd = data_path + subj + '/' + subj + '_' + list_num + '_raw_sss-ico-4-fwd.fif' 
+    if os.path.isfile(data_path + subj + '/' + subj + '_list' + list_num + '_raw_sss-ico-4-fwd.fif'): 
+        fname_fwd = data_path + subj + '/' + subj + '_list' + list_num + '_raw_sss-ico-4-fwd.fif' 
     else: 
         print('Subject ' + subj + ' does not have a ico-4-fwd.fif on file.')	
 
@@ -81,7 +81,7 @@ def intra(subj):
     
     # Average epochs and get an evoked dataset. Save to disk.
     evoked = epochs.average()
-    evoked.save(data_path + subj + '/' + subj + '_' + list_num + '_rest_raw_sss-ave.fif') 
+    evoked.save(data_path + subj + '/' + subj + '_list' + list_num + '_rest_raw_sss-ave.fif') 
 
     # Regularize noise cov
     cov = mne.cov.regularize(precov, evoked.info, grad=4000e-13, mag=4e-12, eog=150e-6, proj=True)
@@ -215,7 +215,7 @@ for subject in os.listdir(os.getcwd()):
 # Operate only on specified age group
     if subject.startswith(age):
 # Check if preprocessing has been done (fwd solutions are last step of preprocessing) and process subjects with intra()
-        if os.path.isfile(str(os.getcwd()) + '/' + subject + '/' + subject + '_' + list_num + '_raw_sss-ico-4-fwd.fif'):
+        if os.path.isfile(str(os.getcwd()) + '/' + subject + '/' + subject + '_list' + list_num + '_raw_sss-ico-4-fwd.fif'):
             for i in os.listdir(os.getcwd()):
                 if i.endswith(list_num + '_raw_sss.fif'):
                     rawfile = i
@@ -234,7 +234,7 @@ for subject in os.listdir(os.getcwd()):
                         failed_list.append(subject)
         else:
             failed_list.append(subject)
-            print('Subject ' + subject + ' has not yet been preprocessed.')
+            print('Subject ' + subject + ' has not yet been preprocessed. (No forward solution was found)')
 
 print('The following subjects failed PSD calculations:')
 print(failed_list)
