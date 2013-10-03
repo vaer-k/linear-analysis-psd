@@ -26,14 +26,12 @@ from mne.minimum_norm import read_inverse_operator, compute_source_psd_epochs, a
 ###############################################################################
 # Set global parameters
 data_path = os.getcwd() + '/' 
-age = 'YA'
-#age = raw_input('YA or OA?\n')
-label_name = 'lh.BA45'
-#label_name = raw_input('Which region label would you like to compute PSD for?\n')
-fmin = 80.0
-fmax = 100.0
-#fmin = float(raw_input('fmin:'))
-#fmax = float(raw_input('fmax:')) 
+subjects_dir = os.environ['SUBJECTS_DIR']
+age = raw_input('YA or OA?\n')
+label_name = raw_input('Which region label would you like to compute PSD for?\n')
+fmin = float(raw_input('fmin:'))
+fmax = float(raw_input('fmax:')) 
+list_num = raw_input('Which list?\n')
 
 event_id, tmin, tmax = 1, 0.0, 4.0
 snr = 1.0 
@@ -48,10 +46,11 @@ def intra(subj):
     print('Now beginning intra processing on ' + subj + '...\n') * 5
 
     # Set function parameters
-    fname_label = '/home/vrupp/data/search_fMRI/' + subj + '/' + 'label/%s.label' % label_name
-    fname_raw = data_path + subj + '/' + subj + '_rest_raw_sss.fif'
-    if os.path.isfile(data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'): 
-	fname_fwd = data_path + subj + '/' + subj + '_rest_raw_sss-ico-4-fwd.fif'
+    fname_label = subjects_dir + '/' + subj + '/' + 'label/%s.label' % label_name
+    fname_raw = data_path + subj + '/' + subj + '_' + list_num + '_raw_sss-ico-4-fwd.fif' 
+
+    if os.path.isfile(data_path + subj + '/' + subj + '_' + list_num + '_raw_sss-ico-4-fwd.fif'): 
+        fname_fwd = data_path + subj + '/' + subj + '_' + list_num + '_raw_sss-ico-4-fwd.fif' 
     else: 
         print('Subject ' + subj + ' does not have a ico-4-fwd.fif on file.')	
 
@@ -65,17 +64,12 @@ def intra(subj):
     raw = fiff.Raw(fname_raw)
     forward_meg = mne.read_forward_solution(fname_fwd)
     
-    # Estimate noise covariance from teh raw data
-    cov = mne.compute_raw_data_covariance(raw, reject=dict(eog=150e-6))
-    write_cov(data_path + subj + '/' + subj + '-cov.fif', cov)
+    # Estimate noise covariance from the raw data.
+    precov = mne.compute_raw_data_covariance(raw, reject=dict(eog=150e-6))
+    write_cov(data_path + subj + '/' + subj + '-cov.fif', precov)
     
-    # Make inverse operator
-    info = raw.info
-    inverse_operator = make_inverse_operator(info, forward_meg, cov, loose=None, depth=0.8)
-    
-    # Epoch data into 4s intervals
-    events = mne.make_fixed_length_events(raw, 1, start=0, stop=None, 
-    		duration=4.)
+    # Find events from raw file 
+    events = mne.find_events(raw, stim_channel='STI 014') 
     
     # Set up pick list: (MEG minus bad channels)
     include = []
@@ -85,6 +79,17 @@ def intra(subj):
     # Read epochs and remove bad epochs
     epochs = mne.Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks, baseline=(None, 0), preload=True, reject=dict(grad=4000e-13, mag=4e-12, eog=150e-6))
     
+    # Average epochs and get an evoked dataset. Save to disk.
+    evoked = epochs.average()
+    evoked.save(data_path + subj + '/' + subj + '_' + list_num + '_rest_raw_sss-ave.fif') 
+
+    # Regularize noise cov
+    cov = mne.cov.regularize(precov, evoked.info, grad=4000e-13, mag=4e-12, eog=150e-6, proj=True)
+
+    # Make inverse operator
+    info = evoked.info
+    inverse_operator = make_inverse_operator(info, forward_meg, cov, loose=None, depth=0.8)
+
     # Pull data for averaging later
     epc_array = epochs.get_data()
     
@@ -96,31 +101,30 @@ def intra(subj):
     epoch_num = 1
     epoch_num_str = str(epoch_num)
     for i in inv:
-#    	i.save(data_path + subj + '/tmp/' + label_name[3:] + '_rest_raw_sss-oct-6-inv' + epoch_num_str)
-	i.save(data_path + subj + '/tmp/' + label_name[3:] + '_rest_raw_sss-ico-4-inv' + epoch_num_str)
-    	epoch_num = epoch_num + 1
-    	epoch_num_str = str(epoch_num)
+        i.save(data_path + subj + '/tmp/' + label_name[3:] + '_rest_raw_sss-ico-4-inv' + epoch_num_str)
+       	epoch_num = epoch_num + 1
+       	epoch_num_str = str(epoch_num)
     
     # The following is used to remove the empty opposing hemisphere files
     # and then move the files to save into the appropriate directory
     
     if hemi == 'left':
-    	filelist = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-rh.stc") ]	
+    	filelist = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-rh.stc") ]	
     	for f in filelist:
-            os.remove("/data/restMEG/" + subj + '/tmp/' + f)
-    	keepers = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-lh.stc") ]
+            os.remove(data_path + subj + '/tmp/' + f)
+    	keepers = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-lh.stc") ]
     	for f in keepers:
     	    src = f 
-            os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/inv/' + src)
+            os.rename(data_path + subj + '/tmp/' + src, data_path + subj + '/inv/' + src)
     
     elif hemi == 'right':
-    	filelist = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-lh.stc") ]
+    	filelist = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-lh.stc") ]
         for f in filelist:
-            os.remove("/data/restMEG/" + subj + '/tmp/' + f)
-    	keepers = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-rh.stc") ]
+            os.remove(data_path + subj + '/tmp/' + f)
+    	keepers = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-rh.stc") ]
         for f in keepers:
             src = f 
-            os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/inv/' + src)
+            os.rename(data_path + subj + '/tmp/' + src, data_path + subj + '/inv/' + src)
     
     
     # define frequencies of interest
@@ -139,27 +143,27 @@ def intra(subj):
     epoch_num = 1
     epoch_num_str = str(epoch_num)
     for i in psd:
-    	i.save('/data/restMEG/' + subj + '/' + 'tmp' + '/' + label_name[3:] + '_dspm_snr-1_PSD'+ epoch_num_str)
+    	i.save(data_path + subj + '/' + 'tmp' + '/' + label_name[3:] + '_dspm_snr-1_PSD'+ epoch_num_str)
     	epoch_num = epoch_num + 1
         epoch_num_str = str(epoch_num)
     
     if hemi == 'left':
-        filelist = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-rh.stc") ]
+        filelist = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-rh.stc") ]
         for f in filelist:
-            os.remove("/data/restMEG/" + subj + '/tmp/' + f)
-    	keepers = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-lh.stc") ]
+            os.remove(data_path + subj + '/tmp/' + f)
+    	keepers = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-lh.stc") ]
         for f in keepers:
             src = f
-            os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/psd/' + src)
+            os.rename(data_path + subj + '/tmp/' + src,data_path + subj + '/psd/' + src)
     
     elif hemi == 'right':
-        filelist = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-lh.stc") ]
+        filelist = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-lh.stc") ]
         for f in filelist:
-            os.remove("/data/restMEG/" + subj + '/tmp/' + f)
-    	keepers = [ f for f in os.listdir("/data/restMEG/" + subj + '/tmp') if f.endswith("-rh.stc") ]
+            os.remove(data_path + subj + '/tmp/' + f)
+    	keepers = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-rh.stc") ]
         for f in keepers:
             src = f
-            os.rename("/data/restMEG/" + subj + '/tmp/' + src,"/data/restMEG/" + subj + '/psd/' + src)
+            os.rename(data_path + subj + '/tmp/' + src,data_path + subj + '/psd/' + src)
    
  
     # This code computes the average PSDs of each epoch. Each PSD file is an array of shape N_vertices*N_frequencies. This code averages the PSD value of each vertex together and outputs the average PSD value of each frequency. Then, it averages the PSD values of each epoch, outputting one average PSD value per frequency value, i.e., this is the average across epochs.
@@ -180,7 +184,7 @@ def intra(subj):
     if len(psd) != 0:
         psd_avg /= n_epochs
     
-    # Compute variance for each epoch and then variance of those results
+    # Compute variance for each epoch and then variance across epochs 
     
     n_epochs = len(epc_array)
     for i, stc in enumerate(psd):
@@ -193,16 +197,15 @@ def intra(subj):
         else:
             psd_var = np.vstack((psd_var,np.var(stc.data, axis=0)))
     
-    if len(psd) != 0:
+    if len(psd) >= 2:
         tot_var = np.var(psd_var, axis=0)
 
-    if len(psd) == 0:
+    if len(psd) <= 1:
 	failed_subj = subj
-	print(failed_subj + ' is a no go. No PSD values calculated, likely because all epochs were rejected.')
-	time.sleep(30)
+	print(failed_subj + ' failed. No PSD values calculated, likely because all epochs were rejected.')
 	return failed_subj, failed_subj, failed_subj
 
-    if len(psd) != 0:
+    if len(psd) >= 2:
         return (psd_avg, tot_var, len(psd_avg))
 
 
@@ -210,37 +213,75 @@ failed_list = []
 # List subjects in cwd
 for subject in os.listdir(os.getcwd()):
 # Operate only on specified age group
-        if subject.startswith(age):
-	    print(subject) * 5
+    if subject.startswith(age):
 # Check if preprocessing has been done (fwd solutions are last step of preprocessing) and process subjects with intra()
-            if os.path.isfile(str(os.getcwd()) + '/' + subject + '/' + subject + '_rest_raw_sss-ico-4-fwd.fif'):
-		individual_avg_psd, individual_var_var, n_freqs = intra(subject)
+        if os.path.isfile(str(os.getcwd()) + '/' + subject + '/' + subject + '_' + list_num + '_raw_sss-ico-4-fwd.fif'):
+            for i in os.listdir(os.getcwd()):
+                if i.endswith(list_num + '_raw_sss.fif'):
+                    rawfile = i
+                    individual_avg_psd, individual_var_var, n_freqs = intra(rawfile)
 # Verify subject did not fail PSD calculations and calculate combined PSD averages and variances. Set up empty array for combined_avg_psd and stack combined_var_var into one vertical array
-		print(type(individual_avg_psd))
-		if type(individual_avg_psd) == np.ndarray: 
-		    if not 'combined_avg_psd' in locals():
-			combined_avg_psd = np.zeros(n_freqs)
-		    else:
-    		        combined_avg_psd = individual_avg_psd + combined_avg_psd
-		    if not 'combined_var_var' in locals():
-			combined_var_var = individual_var_var
-		    else:
-		        combined_var_var = np.vstack((combined_var_var, individual_var_var))		
-		else:
-		    failed_list.append(subject)
-	    else:
-		failed_list.append(subject)
-                print('Subject ' + subject + ' has not yet been preprocessed.')
+                    if type(individual_avg_psd) == np.ndarray: 
+                        if not 'combined_avg_psd' in locals():
+                            combined_avg_psd = np.zeros(n_freqs)
+                        else:
+                            combined_avg_psd = individual_avg_psd + combined_avg_psd
+                        if not 'combined_var_var' in locals():
+                            combined_var_var = individual_var_var
+                        else:
+                            combined_var_var = np.vstack((combined_var_var, individual_var_var))		
+                    else:
+                        failed_list.append(subject)
+        else:
+            failed_list.append(subject)
+            print('Subject ' + subject + ' has not yet been preprocessed.')
 
 print('The following subjects failed PSD calculations:')
 print(failed_list)
 
+# Average across subjects
 n_subj = len(os.listdir(os.getcwd())) - len(failed_list)
 avg_psd = combined_avg_psd / n_subj
+
+# Average across frequencies
+final_avg_psd = np.mean(avg_psd) 
+
+# Compute variance across subjects
 var_var = np.var(combined_var_var, axis=0)
-print('avg_psd follows:')
+
+# Compute variance across frequencies
+final_var = np.var(var_var)
+
+# Compute linear regression
+step = 0.25
+xi = np.arange(fmin, fmax, step)   
+print('xi length:' + str(len(xi)))
+A = np.array([ xi, np.ones(len(xi))]) 
+print('A.T length:' + str(len(A.T)))
+y = avg_psd
+print('y length:' + str(len(y)))
+w = np.linalg.lstsq(A.T, y)[0] #obtaining the parameters
+print('w:')
+print(w)
+
+# plotting the line
+line = w[0]*xi+w[1] #regression line
+pl.plot(xi,line,'r-',xi,y,'o')
+pl.show()
+
+print('avg_psd (across subjects) follows:')
 print(avg_psd)
-print('var_var follows:')
+print('var_var (across subjects) follows:')
 print(var_var)
-np.savetxt('psd_avg.csv', avg_psd, delimiter=',')
-np.savetxt('var_var.csv', var_var, delimiter=',')
+print('final_avg_psd (across freqs) follows:')
+print(final_avg_psd)
+print('final_var (across freqs) follows:')
+print(final_var)
+
+# Save averages and variances across subjects in csv document
+if age == 'YA':
+    np.savetxt('psd_avg_YA.csv', avg_psd, delimiter=',')
+    np.savetxt('var_var_YA.csv', var_var, delimiter=',')
+if age == 'OA':
+    np.savetxt('psd_avg_OA.csv', avg_psd, delimiter=',')
+    np.savetxt('var_var_OA.csv', var_var, delimiter=',')
