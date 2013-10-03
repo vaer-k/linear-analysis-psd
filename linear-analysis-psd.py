@@ -243,7 +243,7 @@ var_var = np.var(combined_var_var, axis=0)
 # Compute variance across frequencies
 final_var = np.var(var_var)
 
-# Compute linear regression
+# Compute linear regression (http://glowingpython.blogspot.com/2012/03/linear-regression-with-numpy.html)
 step = 0.25
 xi = np.arange(fmin, fmax, step)   
 print('xi length:' + str(len(xi)))
