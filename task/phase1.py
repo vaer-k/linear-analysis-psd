@@ -1,11 +1,11 @@
 #! /usr/bin/python
 
 """
-==========================
-   linear-analysis-psd
-==========================
+======================================
+Linear analysis of task data - Phase1
+======================================
 
-This program will compute average PSD and variance of across subjects in specified frequency range, the perform analysis using Welche's t-test. Run this from the directory of your MEG subjects.
+This script will process data beginning with the first step after the generation of the forward solution and ending with the calculation of PSD values.
 
 """
 # Authors: Vincent Rupp Jr. <<ruppjr@hawaii.edu>>; Morgan Hough <<morgan@gazzaleylab.ucsf.edu>>
@@ -19,6 +19,7 @@ import mne
 import os
 import time
 import csv
+import phase0
 from mne import fiff, write_cov
 from mne.fiff import Raw, pick_types
 from mne.minimum_norm import read_inverse_operator, compute_source_psd_epochs, apply_inverse_epochs, write_inverse_operator, make_inverse_operator
@@ -28,7 +29,6 @@ from mne.minimum_norm import read_inverse_operator, compute_source_psd_epochs, a
 data_path = os.getcwd() + '/' 
 subjects_dir = os.environ['SUBJECTS_DIR']
 age = raw_input('YA or OA?\n')
-label_name = raw_input('Which region label would you like to compute PSD for?\n')
 fmin = float(raw_input('fmin:'))
 fmax = float(raw_input('fmax:')) 
 list_num = raw_input('Which list?\n')
@@ -38,36 +38,33 @@ snr = 1.0
 lambda2 = 1.0 / snr ** 2
 method = "dSPM" 
 
-	
 def intra(subj):
     '''
-    Performs initial computations within subject and returns average PSD and variance of all epochs.
+    Performs main process, including generation of inverse solution and PSD computation.
     '''
     print('Now beginning intra processing on ' + subj + '...\n') * 5
 
     # Set function parameters
-    fname_label = subjects_dir + '/' + subj + '/' + 'label/%s.label' % label_name
     fname_raw = data_path + subj + '/' + subj + '_list' + list_num + '_raw_sss-ico-4-fwd.fif' 
 
-    if os.path.isfile(data_path + subj + '/' + subj + '_list' + list_num + '_raw_sss-ico-4-fwd.fif'): 
-        fname_fwd = data_path + subj + '/' + subj + '_list' + list_num + '_raw_sss-ico-4-fwd.fif' 
-    else: 
-        print('Subject ' + subj + ' does not have a ico-4-fwd.fif on file.')	
+    # Load data 
+    raw = fiff.Raw(fname_raw) 
+    forward_meg = mne.read_forward_solution(fname_fwd) 
 
-    if label_name.startswith('lh.'):
-    	hemi = 'left'
-    elif label_name.startswith('rh.'):
-    	hemi = 'right'	
-    
-    # Load data
-    label = mne.read_label(fname_label)
-    raw = fiff.Raw(fname_raw)
-    forward_meg = mne.read_forward_solution(fname_fwd)
-    
-    # Estimate noise covariance from the raw data.
-    precov = mne.compute_raw_data_covariance(raw, reject=dict(eog=150e-6))
-    write_cov(data_path + subj + '/' + subj + '-cov.fif', precov)
-    
+    # Estimate noise covariance from the raw data 
+    precov = mne.compute_raw_data_covariance(raw, reject=dict(eog=150e-6)) 
+    write_cov(data_path + subj + '/' + subj + '-cov.fif', precov) 
+
+    # Find events from raw file
+    events = mne.find_events(raw, stim_channel='STI 014')
+
+    # Write events to file
+    mne.write_events(subj + '-eve.fif', events)
+
+
+#################################################################################
+#################################################################################
+	
     # Find events from raw file 
     events = mne.find_events(raw, stim_channel='STI 014') 
     

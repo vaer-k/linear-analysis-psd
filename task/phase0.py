@@ -5,7 +5,7 @@
 Linear analysis of task data - Phase0
 =====================================
 
-Phase0 is used to generate a list of raw files to be processed.
+Phase0 is used to generate a list of raw files to be processed. This script should be run from the directory containing your MEG subjects.
 
 """
 # Authors: Vincent Rupp Jr. <<ruppjr@hawaii.edu>>; Morgan Hough <<morgan@gazzaleylab.ucsf.edu>>
