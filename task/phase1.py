@@ -19,7 +19,6 @@ import mne
 import os
 import time
 import csv
-import phase0
 from mne import fiff, write_cov
 from mne.fiff import Raw, pick_types
 from mne.minimum_norm import read_inverse_operator, compute_source_psd_epochs, apply_inverse_epochs, write_inverse_operator, make_inverse_operator
