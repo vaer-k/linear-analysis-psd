@@ -10,11 +10,6 @@ This script will process data beginning with the first step after the generation
 """
 # Authors: Vincent Rupp Jr. <<ruppjr@hawaii.edu>>; Morgan Hough <<morgan@gazzaleylab.ucsf.edu>>
 
-print __doc__
-
-import numpy as np
-import pylab as pl
-import scipy
 import mne
 import os
 import time
