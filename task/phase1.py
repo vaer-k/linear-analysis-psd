@@ -39,7 +39,8 @@ def intra(subj):
     print('Now beginning intra processing on ' + subj + '...\n') * 5
 
     # Set function parameters
-    fname_raw = data_path + subj + '/' + subj + '_list' + list_num + '_raw_sss-ico-4-fwd.fif' 
+    fname_raw = data_path + subj[:6] + '/' + subj 
+    fname_fwd = data_path + subj[:6] + '/' + subj[:-4] + '-fwd.fif'
 
     # Load data 
     raw = fiff.Raw(fname_raw) 
@@ -55,69 +56,39 @@ def intra(subj):
     # Write events to file
     mne.write_events(subj + '-eve.fif', events)
 
-
-#################################################################################
-#################################################################################
-	
-    # Find events from raw file 
-    events = mne.find_events(raw, stim_channel='STI 014') 
-    
     # Set up pick list: (MEG minus bad channels)
-    include = []
+    include []
     exclude = raw.info['bads']
-    picks = fiff.pick_types(raw.info, meg=True, eeg=False, stim=False, eog=True, include=include, exclude=exclude)
-    
+    picks = fiff.pick_types(raw.info, meg=True, eeg=False, stime=True, eog=True, include=include, exclude=exclude)
+
     # Read epochs and remove bad epochs
-    epochs = mne.Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks, baseline=(None, 0), preload=True, reject=dict(grad=4000e-13, mag=4e-12, eog=150e-6))
-    
-    # Average epochs and get an evoked dataset. Save to disk.
+    epochs = mne.Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks, baseline=(None, 0), preload=True, reject=dict(grad=4000e-13, mag=4e-12, eog=150e-6))    
+
+    # Average epochs to produce an evoked dataset, then write to disk
     evoked = epochs.average()
-    evoked.save(data_path + subj + '/' + subj + '_list' + list_num + '_rest_raw_sss-ave.fif') 
+    evoked.save(data_path + subj[:6] + '/' = subj + '-ave.fif')
 
     # Regularize noise cov
     cov = mne.cov.regularize(precov, evoked.info, grad=4000e-13, mag=4e-12, eog=150e-6, proj=True)
 
+    # Restrict forward solution as necessary for MEG
+    restricted_fwd = mne.fiff.pick_types_forward(forward_meg, meg=True, eeg=False) 
+
     # Make inverse operator
     info = evoked.info
-    inverse_operator = make_inverse_operator(info, forward_meg, cov, loose=None, depth=0.8)
+    inverse_operator = make_inverse_operator(info, restricted_fwd, cov, loose=None, depth=0.8)
 
     # Pull data for averaging later
     epc_array = epochs.get_data()
-    
+
     # Compute the inverse solution
-    inv = apply_inverse_epochs(epochs, inverse_operator, lambda2, method, label=label)
+    inv = apply_inverse(evoked, inverse_operator, lambda2, "dSPM", pick_normal=False)
+
     
-    #Need to add a line here to automatically create stc directory within subj
-    
-    epoch_num = 1
-    epoch_num_str = str(epoch_num)
-    for i in inv:
-        i.save(data_path + subj + '/tmp/' + label_name[3:] + '_rest_raw_sss-ico-4-inv' + epoch_num_str)
-       	epoch_num = epoch_num + 1
-       	epoch_num_str = str(epoch_num)
-    
-    # The following is used to remove the empty opposing hemisphere files
-    # and then move the files to save into the appropriate directory
-    
-    if hemi == 'left':
-    	filelist = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-rh.stc") ]	
-    	for f in filelist:
-            os.remove(data_path + subj + '/tmp/' + f)
-    	keepers = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-lh.stc") ]
-    	for f in keepers:
-    	    src = f 
-            os.rename(data_path + subj + '/tmp/' + src, data_path + subj + '/inv/' + src)
-    
-    elif hemi == 'right':
-    	filelist = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-lh.stc") ]
-        for f in filelist:
-            os.remove(data_path + subj + '/tmp/' + f)
-    	keepers = [ f for f in os.listdir(data_path + subj + '/tmp') if f.endswith("-rh.stc") ]
-        for f in keepers:
-            src = f 
-            os.rename(data_path + subj + '/tmp/' + src, data_path + subj + '/inv/' + src)
-    
-    
+
+#################################################################################
+#################################################################################
+	
     # define frequencies of interest
     bandwidth = 4.  # bandwidth of the windows in Hz
     
