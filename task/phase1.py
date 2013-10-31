@@ -66,7 +66,7 @@ def intra(subj):
 
     # Average epochs to produce an evoked dataset, then write to disk
     evoked = epochs.average()
-    evoked.save(data_path + subj[:6] + '/' = subj + '-ave.fif')
+    evoked.save(data_path + subj[:6] + '/' = subj[:-4] + '-ave.fif')
 
     # Regularize noise cov
     cov = mne.cov.regularize(precov, evoked.info, grad=4000e-13, mag=4e-12, eog=150e-6, proj=True)
@@ -83,12 +83,11 @@ def intra(subj):
 
     # Compute the inverse solution
     inv = apply_inverse(evoked, inverse_operator, lambda2, "dSPM", pick_normal=False)
+    inv.save(data_path + subj[:6] + '/' + subj[:-4] + '-inv.fif')
 
     # picks MEG gradiometers
     picks = fiff.pick_types(raw.info, meg=True, eeg=False, eog=True, stim=False, exclude=exclude)
 
     # Compute source power spectral density and save to file
     psd = compute_source_psd(raw, inverse_operator, method='dSPM', fmin=fmin, fmax=fmax, pick_normal=True)
-    psd.save(data_path + subj[:6] + '/' + subj + '-ave.fif')
-
-
+    psd.save(data_path + subj[:6] + '/' + subj[:-4] + '-psd.fif')
