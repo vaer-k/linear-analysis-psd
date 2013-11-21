@@ -25,7 +25,7 @@ subjects_dir = os.environ['SUBJECTS_DIR']
 age = raw_input('YA or OA?\n')
 fmin = float(raw_input('fmin:'))
 fmax = float(raw_input('fmax:')) 
-list_num = raw_input('Which list?\n')
+#list_num = raw_input('Which list?\n')
 
 event_id, tmin, tmax = 1, 0.0, 4.0
 snr = 1.0 
