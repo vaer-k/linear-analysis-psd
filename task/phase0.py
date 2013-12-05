@@ -17,16 +17,19 @@ import re
 
 # Initialize 
 subj_list = []
-raw_lists = []
+raw_files = []
 
-def filegen():
+def filegen(age):
+
     # Get subjects in cwd (should be MEG subjects dir) corresponding to desired age group
     for subject in os.listdir(os.getcwd()):
         if subject.startswith(age):
             subj_list.append(subject)
-    
+
     # Generate a list of raw list files to be processed
-    m = re.compile('list..?_raw_sss.fif')
+    m = re.compile('......list..?_raw_sss.fif')
     for subject in subj_list:
         l = m.findall(str(os.listdir(os.getcwd() + '/' + subject)))
-        raw_lists.append(l)
+        raw_files.extend(l)
+
+    return(raw_files)
