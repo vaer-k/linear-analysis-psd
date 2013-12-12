@@ -16,7 +16,7 @@ import time
 import csv
 from mne import fiff, write_cov
 from mne.fiff import Raw, pick_types
-from mne.minimum_norm import read_inverse_operator, compute_source_psd_epochs, apply_inverse_epochs, write_inverse_operator, make_inverse_operator
+from mne.minimum_norm import read_inverse_operator, compute_source_psd, apply_inverse_epochs, write_inverse_operator, make_inverse_operator, apply_inverse
 
 ###############################################################################
 # Set global parameters
@@ -27,7 +27,7 @@ snr = 1.0
 lambda2 = 1.0 / snr ** 2
 method = "dSPM" 
 
-def intra(subj_list):
+def intra(subj_list, fmin, fmax):
     '''
     Performs main process, including generation of inverse solution and PSD computation.
     '''
@@ -38,7 +38,7 @@ def intra(subj_list):
 
         # Set function parameters
         fname_raw = data_path + subj[:5] + '/' + subj 
-        fname_fwd = data_path + subj[:5] + '/' + subj[:-4] + '-fwd.fif'
+        fname_fwd = data_path + subj[:5] + '/' + subj[:-4] + '-ico-4-fwd.fif'
 
         # Load data 
         raw = fiff.Raw(fname_raw) 
@@ -46,28 +46,28 @@ def intra(subj_list):
 
         # Estimate noise covariance from the raw data 
         precov = mne.compute_raw_data_covariance(raw, reject=dict(eog=150e-6)) 
-        write_cov(data_path + subj + '/' + subj + '-cov.fif', precov) 
+        write_cov(data_path + subj[:5] + '/' + subj[:-4] + '-cov.fif', precov) 
 
         # Find events from raw file
         events = mne.find_events(raw, stim_channel='STI 014')
 
         # Write events to file
-        mne.write_events(subj + '-eve.fif', events)
+        mne.write_events(data_path + subj[:5] + '/' + subj[:-4] + '-eve.fif', events)
 
-        # Set up pick list: (MEG minus bad channels)
+        # Set up pick list:
         include = []
         exclude = raw.info['bads']
-        picks = fiff.pick_types(raw.info, meg=True, eeg=False, stime=True, eog=True, include=include, exclude=exclude)
+        picks = fiff.pick_types(raw.info, meg=True, eeg=False, stim=True, eog=True, include=include, exclude=exclude)
 
         # Read epochs and remove bad epochs
         epochs = mne.Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks, baseline=(None, 0), preload=True, reject=dict(grad=4000e-13, mag=4e-12, eog=150e-6)) 
 
         # Average epochs to produce an evoked dataset, then write to disk
         evoked = epochs.average()
-        evoked.save(data_path + subj[:6] + '/' + subj[:-4] + '-ave.fif')
+        evoked.save(data_path + subj[:5] + '/' + subj[:-4] + '-ave.fif')
 
         # Regularize noise cov
-        cov = mne.cov.regularize(precov, evoked.info, grad=4000e-13, mag=4e-12, eog=150e-6, proj=True)
+        cov = mne.cov.regularize(precov, evoked.info, grad=0.05, mag=0.05, eeg=0.1, proj=True)
 
         # Restrict forward solution as necessary for MEG
         restricted_fwd = mne.fiff.pick_types_forward(forward_meg, meg=True, eeg=False) 
@@ -81,11 +81,11 @@ def intra(subj_list):
 
         # Compute the inverse solution
         inv = apply_inverse(evoked, inverse_operator, lambda2, "dSPM", pick_normal=False)
-        inv.save(data_path + subj[:6] + '/' + subj[:-4] + '-inv.fif')
+        inv.save(data_path + subj[:5] + '/' + subj[:-4] + '-inv.fif')
 
         # picks MEG gradiometers
         picks = fiff.pick_types(raw.info, meg=True, eeg=False, eog=True, stim=False, exclude=exclude)
 
         # Compute source power spectral density and save to file
-        psd = compute_source_psd(raw, inverse_operator, method='dSPM', fmin=fmin, fmax=fmax, pick_normal=True)
-        psd.save(data_path + subj[:6] + '/' + subj[:-4] + '-psd.fif')
+        psd = compute_source_psd(raw, inverse_operator, method='dSPM', lambda2=lambda2, fmin=fmin, fmax=fmax, NFFT=2048)
+        psd.save(data_path + subj[:5] + '/' + subj[:-4] + '-psd.fif')
